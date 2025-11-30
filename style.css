@@ -15,9 +15,9 @@ input:disabled{opacity:0.6;cursor:not-allowed;background:rgba(255,255,255,.05)}
 #copyShareBtn:hover{background:rgba(255,255,255,.2);color:white}
 #copyShareBtn.copied{background:#4caf50;color:white;transform:scale(1.1)}
 #copyShareBtn.copied svg{animation:check .4s ease forwards}
-#copyShareBtn:disabled{opacity:0.3;cursor:not-allowed;pointer-events:none;}
+#copyShareBtn:disabled{opacity:0.3;cursor:not-allowed;pointer-events:none}
 @keyframes check{0%{transform:scale(1)}50%{transform:scale(1.3)}100%{transform:scale(1)}}
-.validdoms{list-style-type:none;text-align:right;padding:0;margin:16px 0 0 0}
+.validdoms{list-style-type:none;text-align:right;padding:0;margin:0 0 0}
 .validdoms a{color:white;text-decoration:none;transition:color .2s}
 .validdoms a:hover{color:white;text-decoration:underline}
 #output{min-height:0;margin-top:2.5rem;padding:0;background:transparent;border:none;box-shadow:none}

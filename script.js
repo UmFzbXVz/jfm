@@ -2,8 +2,22 @@ const PROXY = "https://corsproxy.io/?";
 const urlInput = document.getElementById('urlInput');
 const output = document.getElementById('output');
 const copyShareBtn = document.getElementById('copyShareBtn');
-
 let lastValidUrl = "";
+
+function setPageTitle(title) {
+  document.title = title ? `${title} | JFM AiO` : "JFM AiO";
+}
+
+function looksLikeValidUrl(str) {
+  if (!str) return false;
+  const t = str.trim();
+  return /^(https?:\/\/)/i.test(t) && (t.includes('jfmplay.dk') || /stiften\.dk|jv\.dk|fyens\.dk|ugeavisen\.dk|hsfo\.dk|faa\.dk|erhvervplus\.dk|dagbladet-holstebro-struer\.dk|viborg-folkeblad\.dk|amtsavisen\.dk|vafo\.dk|helsingordagblad\.dk|frdb\.dk/i.test(t));
+}
+
+urlInput.addEventListener('input', () => {
+  const val = urlInput.value.trim();
+  if (looksLikeValidUrl(val) && val !== lastValidUrl) processUrl(val);
+});
 
 urlInput.addEventListener('keypress', e => {
   if (e.key === 'Enter') {
@@ -15,12 +29,8 @@ urlInput.addEventListener('keypress', e => {
 urlInput.addEventListener('focus', () => urlInput.select());
 urlInput.addEventListener('click', () => urlInput.select());
 
-document.getElementById('infoBtn').addEventListener('click', () => {
-  document.getElementById('infoModal').classList.add('show');
-});
-
+document.getElementById('infoBtn').addEventListener('click', () => document.getElementById('infoModal').classList.add('show'));
 document.querySelector('.close-modal').addEventListener('click', () => document.getElementById('infoModal').classList.remove('show'));
-
 document.getElementById('infoModal').addEventListener('click', e => {
   if (e.target === document.getElementById('infoModal')) document.getElementById('infoModal').classList.remove('show');
 });
@@ -28,10 +38,7 @@ document.getElementById('infoModal').addEventListener('click', e => {
 copyShareBtn.addEventListener('click', async () => {
   if (!lastValidUrl) return;
   let urlToCopy = lastValidUrl;
-  if (urlToCopy.includes('?teaser-referral=')) {
-    urlToCopy = urlToCopy.split('?teaser-referral=')[0];
-    if (urlToCopy.endsWith('?')) urlToCopy = urlToCopy.slice(0, -1);
-  }
+  if (urlToCopy.includes('?teaser-referral=')) urlToCopy = urlToCopy.split('?teaser-referral=')[0].split('?')[0];
   const shareUrl = `https://umfzbxvz.github.io/jfm?url=${encodeURIComponent(urlToCopy)}`;
   try {
     await navigator.clipboard.writeText(shareUrl);
@@ -47,20 +54,9 @@ copyShareBtn.addEventListener('click', async () => {
   setTimeout(() => copyShareBtn.classList.remove('copied'), 2000);
 });
 
-function setCopyButtonEnabled(enabled) {
-  copyShareBtn.disabled = !enabled;
-}
-
-function disableInput() {
-  urlInput.disabled = true;
-  setCopyButtonEnabled(false);
-}
-
-function enableInput() {
-  urlInput.disabled = false;
-  urlInput.focus();
-  urlInput.select();
-}
+function setCopyButtonEnabled(enabled) { copyShareBtn.disabled = !enabled; }
+function disableInput() { urlInput.disabled = true; setCopyButtonEnabled(false); }
+function enableInput() { urlInput.disabled = false; urlInput.focus(); urlInput.select(); }
 
 function getUrlParameter() {
   const params = new URLSearchParams(location.search);
@@ -72,15 +68,17 @@ async function processUrl(inputUrl) {
   disableInput();
   lastValidUrl = "";
   setCopyButtonEnabled(false);
+  setPageTitle("");
 
   let success = false;
+  let pageTitle = null;
 
   try {
     if (inputUrl.includes('jfmplay.dk')) {
-      await loadVideo(inputUrl, output);
+      pageTitle = await loadVideo(inputUrl, output);
       success = true;
     } else if (isJfmNewspaper(inputUrl)) {
-      await loadFullArticle(inputUrl, output);
+      pageTitle = await loadFullArticle(inputUrl, output);
       success = true;
     } else {
       output.innerHTML = '<p style="color:#f66;text-align:center;padding:2rem">Ukendt link – kun JFM Play og JFM-aviser understøttes</p>';
@@ -89,11 +87,11 @@ async function processUrl(inputUrl) {
     output.innerHTML = '<p style="color:#f66;text-align:center;padding:2rem">Kunne ikke hente indholdet – prøv igen senere</p>';
   }
 
-  if (success) {
+  if (success && pageTitle) {
+    setPageTitle(pageTitle);
     lastValidUrl = inputUrl;
     setCopyButtonEnabled(true);
   }
-
   enableInput();
 }
 
@@ -102,12 +100,24 @@ function isJfmNewspaper(u) {
 }
 
 async function loadVideo(pageUrl, container) {
+  let videoTitle = "JFM Play video";
+  try {
+    const resp = await fetch(PROXY + encodeURIComponent(pageUrl));
+    const html = await resp.text();
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    videoTitle = doc.querySelector('title')?.textContent.trim() || videoTitle;
+    if (videoTitle.includes('|')) videoTitle = videoTitle.split('|')[0].trim();
+  } catch {}
+
   container.innerHTML = '<video controls autoplay></video>';
   const video = container.querySelector('video');
+
   shaka.polyfill.installAll();
   if (!shaka.Player.isBrowserSupported()) throw new Error();
+
   const player = new shaka.Player(video);
   const { primary, fallback } = await getVideoUrls(pageUrl);
+
   let current = primary;
   player.addEventListener('error', () => {
     if (current === primary && fallback) {
@@ -115,7 +125,9 @@ async function loadVideo(pageUrl, container) {
       player.load(fallback).catch(() => {});
     }
   });
+
   await player.load(primary);
+  return videoTitle;
 }
 
 async function getVideoUrls(pageUrl) {
@@ -142,17 +154,22 @@ async function loadFullArticle(originalUrl, container) {
   const pageResp = await fetch(PROXY + encodeURIComponent(originalUrl));
   const pageHtml = await pageResp.text();
   const pageDoc = new DOMParser().parseFromString(pageHtml, "text/html");
+
   const asyncEl = pageDoc.querySelector('article[data-load-async-url*="/jfm-load-article-content/"], div[data-load-async-url*="/jfm-load-article-content/"]');
   if (!asyncEl) throw new Error();
+
   const asyncPath = asyncEl.getAttribute('data-load-async-url');
   const base = new URL(originalUrl);
   const asyncUrl = `${base.protocol}//${base.hostname}${asyncPath}`;
+
   const asyncResp = await fetch(PROXY + encodeURIComponent(asyncUrl));
   if (!asyncResp.ok) throw new Error();
   const asyncHtml = await asyncResp.text();
   const doc = new DOMParser().parseFromString(asyncHtml, "text/html");
+
   const headline = doc.querySelector('h1.article__headline')?.textContent.trim();
   if (!headline) throw new Error();
+
   const label = doc.querySelector('span.label')?.textContent.trim() || '';
   const lead = doc.querySelector('div.article__lead')?.textContent.trim() || '';
   const byline = doc.querySelector('div.article__byline')?.textContent.trim() || '';
@@ -165,6 +182,7 @@ async function loadFullArticle(originalUrl, container) {
     const src = wrapper?.getAttribute('data-src');
     return src ? { src, caption } : null;
   }).filter(Boolean);
+
   let html = '';
   if (label) html += `<div class="article-label">${label}</div>`;
   html += `<h1 class="article-headline">${headline}</h1>`;
@@ -175,7 +193,9 @@ async function loadFullArticle(originalUrl, container) {
     html += `<img src="${img.src}" class="article-image" alt="${img.caption}">`;
     if (img.caption) html += `<figcaption>${img.caption}</figcaption>`;
   });
+
   container.innerHTML = html;
+  return headline;
 }
 
 setCopyButtonEnabled(false);
