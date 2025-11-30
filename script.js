@@ -12,10 +12,16 @@ function updatePageTitle(title) {
 function isJfmLink(str) {
   if (!str) return false;
   const t = str.trim();
-  return /^https?:\/\//i.test(t) && (
-    t.includes('jfmplay.dk') ||
-    /stiften\.dk|jv\.dk|fyens\.dk|ugeavisen\.dk|hsfo\.dk|faa\.dk|erhvervplus\.dk|dagbladet-holstebro-struer\.dk|viborg-folkeblad\.dk|amtsavisen\.dk|vafo\.dk|helsingordagblad\.dk|frdb\.dk/i.test(t)
-  );
+  return (/^https?:\/\//i.test(t) || /jfmplay\.dk|stiften\.dk|jv\.dk|fyens\.dk|ugeavisen\.dk|hsfo\.dk|faa\.dk|erhvervplus\.dk|dagbladet-holstebro-struer\.dk|viborg-folkeblad\.dk|amtsavisen\.dk|vafo\.dk|helsingordagblad\.dk|frdb\.dk/i.test(t));
+}
+
+function normalizeUrl(input) {
+  let t = input.trim();
+  if (/^https?:\/\//i.test(t)) return t;
+  if (/jfmplay\.dk/i.test(t)) return `https://${t}`;
+  const domainMatch = t.match(/^(stiften|jv|fyens|ugeavisen|hsfo|faa|erhvervplus|dagbladet-holstebro-struer|viborg-folkeblad|amtsavisen|vafo|helsingor|frdb)\.dk/i);
+  if (domainMatch) return `https://${t}`;
+  return t;
 }
 
 urlInput.addEventListener('input', () => {
@@ -57,9 +63,7 @@ copyShareBtn.addEventListener('click', async () => {
   if (!currentUrl) return;
 
   let clean = currentUrl.replace(/^https?:\/\//i, '');
-  if (clean.includes('?teaser-referral=')) {
-    clean = clean.split('?')[0];
-  }
+  if (clean.includes('?teaser-referral=')) clean = clean.split('?')[0];
 
   const shareUrl = `https://umfzbxvz.github.io/jfm?url=${clean}`;
 
@@ -97,8 +101,8 @@ function getUrlParameter() {
   return params.get('link') || params.get('url') || '';
 }
 
-async function processUrl(url) {
-  const cleanUrl = url.trim();
+async function processUrl(inputUrl) {
+  const cleanUrl = normalizeUrl(inputUrl);
 
   output.innerHTML = '<p style="text-align:center;color:#aaa;padding:2rem">Indlæser…</p>';
   disableInput();
