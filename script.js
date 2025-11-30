@@ -55,9 +55,14 @@ document.getElementById('infoModal').onclick = e => {
 
 copyShareBtn.addEventListener('click', async () => {
   if (!currentUrl) return;
-  let urlToCopy = currentUrl;
-  if (urlToCopy.includes('?teaser-referral=')) urlToCopy = urlToCopy.split('?')[0];
-  const shareUrl = `https://umfzbxvz.github.io/jfm?url=${encodeURIComponent(urlToCopy)}`;
+
+  let clean = currentUrl.replace(/^https?:\/\//i, '');
+  if (clean.includes('?teaser-referral=')) {
+    clean = clean.split('?')[0];
+  }
+
+  const shareUrl = `https://umfzbxvz.github.io/jfm?url=${clean}`;
+
   try {
     await navigator.clipboard.writeText(shareUrl);
   } catch {
