@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JFM AiO</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.10.5/shaka-player.compiled.min.js"></script>
+</head>
+<body>
+  <div class="page-container">
+    <div class="header">
+      <h1>JFM AiO</h1>
+      <button id="infoBtn" aria-label="Info">i</button>
+    </div>
+    <div class="controls">
+      <div class="input-wrapper">
+        <input type="text" id="urlInput" placeholder="Indsæt link fra JFM Play eller en JFM-avis..." autofocus>
+        <button id="copyShareBtn" class="copy-btn" aria-label="Opret og kopiér delingslink" title="Opret og kopiér delingslink">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,3H4A2,2 0 0,0 2,5V17H4V5H16V3Z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div id="output"></div>
+  </div>
+
+  <div id="infoModal" class="modal">
+    <div class="modal-content">
+      <button class="close-modal">x</button>
+      <p>Forbedret visning af <strong>videoer</strong> fra JFM Play og <strong>artikler</strong> fra alle JFM-aviser</p>
+      <p><strong>Hvordan:</strong><br>Indsæt link → tryk Enter</p>
+      <p style="text-align:right"><strong>Gyldige domæner</strong></p>
+      <ul class="validdoms">
+        <li><a href="https://jfmplay.dk" target="_blank" rel="noopener">jfmplay.dk</a></li>
+        <li><a href="https://stiften.dk" target="_blank" rel="noopener">stiften.dk</a></li>
+        <li><a href="https://jv.dk" target="_blank" rel="noopener">jv.dk</a></li>
+        <li><a href="https://fyens.dk" target="_blank" rel="noopener">fyens.dk</a></li>
+        <li><a href="https://ugeavisen.dk" target="_blank" rel="noopener">ugeavisen.dk</a></li>
+        <li><a href="https://hsfo.dk" target="_blank" rel="noopener">hsfo.dk</a></li>
+        <li><a href="https://faa.dk" target="_blank" rel="noopener">faa.dk</a></li>
+        <li><a href="https://erhvervplus.dk" target="_blank" rel="noopener">erhvervplus.dk</a></li>
+        <li><a href="https://amtsavisen.dk" target="_blank" rel="noopener">amtsavisen.dk</a></li>
+        <li><a href="https://vafo.dk" target="_blank" rel="noopener">vafo.dk</a></li>
+        <li><a href="https://helsingordagblad.dk" target="_blank" rel="noopener">helsingordagblad.dk</a></li>
+        <li><a href="https://frdb.dk" target="_blank" rel="noopener">frdb.dk</a></li>
+        <li><a href="https://viborg-folkeblad.dk" target="_blank" rel="noopener">viborg-folkeblad.dk</a></li>
+        <li><a href="https://dagbladet-holstebro-struer.dk" target="_blank" rel="noopener">dagbladet-holstebro-struer.dk</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
