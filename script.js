@@ -231,6 +231,13 @@ async function loadFullArticle(url, container) {
 
 setCopyButtonEnabled(false);
 
+document.querySelector('h1, .logo, [href="#"], header').addEventListener('click', e => {
+  if (e.target.textContent.trim() === 'JFM AiO') {
+    e.preventDefault();
+    window.location.href = 'https://umfzbxvz.github.io/jfm/';
+  }
+});
+
 const urlFromParam = getUrlParameter();
 if (urlFromParam && isJfmLink(urlFromParam)) {
   urlInput.value = urlFromParam;
