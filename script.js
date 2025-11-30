@@ -4,8 +4,9 @@ const output = document.getElementById('output');
 const copyShareBtn = document.getElementById('copyShareBtn');
 let lastValidUrl = "";
 
-function setPageTitle(title) {
-  document.title = title ? `${title} | JFM AiO` : "JFM AiO";
+function updatePageTitle(title) {
+  console.log("TITEL SAT TIL:", title);
+  document.title = title;
 }
 
 function looksLikeValidUrl(str) {
@@ -38,7 +39,7 @@ document.getElementById('infoModal').addEventListener('click', e => {
 copyShareBtn.addEventListener('click', async () => {
   if (!lastValidUrl) return;
   let urlToCopy = lastValidUrl;
-  if (urlToCopy.includes('?teaser-referral=')) urlToCopy = urlToCopy.split('?teaser-referral=')[0].split('?')[0];
+  if (urlToCopy.includes('?teaser-referral=')) urlToCopy = urlToCopy.split('?')[0];
   const shareUrl = `https://umfzbxvz.github.io/jfm?url=${encodeURIComponent(urlToCopy)}`;
   try {
     await navigator.clipboard.writeText(shareUrl);
@@ -64,110 +65,90 @@ function getUrlParameter() {
 }
 
 async function processUrl(inputUrl) {
+  console.log("STARTER INDLÆSNING AF:", inputUrl);
   output.innerHTML = '<p style="text-align:center;color:#aaa;padding:2rem">Indlæser…</p>';
   disableInput();
   lastValidUrl = "";
   setCopyButtonEnabled(false);
-  setPageTitle("");
+  updatePageTitle("Indlæser...");
 
   let success = false;
-  let pageTitle = null;
+  let contentTitle = null;
 
   try {
     if (inputUrl.includes('jfmplay.dk')) {
-      pageTitle = await loadVideo(inputUrl, output);
+      contentTitle = await loadVideo(inputUrl, output);
       success = true;
-    } else if (isJfmNewspaper(inputUrl)) {
-      pageTitle = await loadFullArticle(inputUrl, output);
+    } else if (/stiften\.dk|jv\.dk|fyens\.dk|ugeavisen\.dk|hsfo\.dk|faa\.dk|erhvervplus\.dk|dagbladet-holstebro-struer\.dk|viborg-folkeblad\.dk|amtsavisen\.dk|vafo\.dk|helsingordagblad\.dk|frdb\.dk/i.test(inputUrl)) {
+      contentTitle = await loadFullArticle(inputUrl, output);
       success = true;
     } else {
       output.innerHTML = '<p style="color:#f66;text-align:center;padding:2rem">Ukendt link – kun JFM Play og JFM-aviser understøttes</p>';
     }
-  } catch {
-    output.innerHTML = '<p style="color:#f66;text-align:center;padding:2rem">Kunne ikke hente indholdet – prøv igen senere</p>';
+ 2 } catch (err) {
+    console.error("FEJL VED INDLÆSNING:", err);
+    output.innerHTML = '<p style="color:#f66;text-align:center;padding:2rem">Kunne ikke hente indholdet</p>';
   }
 
-  if (success && pageTitle) {
-    setPageTitle(pageTitle);
+  if (success && contentTitle) {
+    console.log("INHOLD INDLÆST – NY TITEL:", contentTitle);
+    updatePageTitle(contentTitle);
     lastValidUrl = inputUrl;
     setCopyButtonEnabled(true);
+  } else {
+    console.log("INGEN TITEL FUNDET – GÅR TILBAGE TIL STANDARD");
+    updatePageTitle("JFM AiO");
   }
   enableInput();
 }
 
-function isJfmNewspaper(u) {
-  return /stiften\.dk|jv\.dk|fyens\.dk|ugeavisen\.dk|hsfo\.dk|faa\.dk|erhvervplus\.dk|dagbladet-holstebro-struer\.dk|viborg-folkeblad\.dk|amtsavisen\.dk|vafo\.dk|helsingordagblad\.dk|frdb\.dk/i.test(u);
-}
-
 async function loadVideo(pageUrl, container) {
-  let videoTitle = "JFM Play video";
+  let title = "JFM Play video";
   try {
-    const resp = await fetch(PROXY + encodeURIComponent(pageUrl));
-    const html = await resp.text();
+    const r = await fetch(PROXY + encodeURIComponent(pageUrl));
+    const html = await r.text();
     const doc = new DOMParser().parseFromString(html, "text/html");
-    videoTitle = doc.querySelector('title')?.textContent.trim() || videoTitle;
-    if (videoTitle.includes('|')) videoTitle = videoTitle.split('|')[0].trim();
-  } catch {}
+    const rawTitle = doc.querySelector("title")?.textContent.trim();
+    console.log("RÅ VIDEO-TITEL FRA SIDE:", rawTitle);
+    title = rawTitle ? rawTitle.split("|")[0].trim().replace(/[-–—]\s*JFM Play.*$/i, "").trim() : title;
+    console.log("RENSKET VIDEO-TITEL:", title);
+  } catch (e) {
+    console.warn("Kunne ikke hente video-titel fra side", e);
+  }
 
   container.innerHTML = '<video controls autoplay></video>';
   const video = container.querySelector('video');
-
   shaka.polyfill.installAll();
   if (!shaka.Player.isBrowserSupported()) throw new Error();
-
   const player = new shaka.Player(video);
   const { primary, fallback } = await getVideoUrls(pageUrl);
-
   let current = primary;
   player.addEventListener('error', () => {
     if (current === primary && fallback) {
       current = fallback;
-      player.load(fallback).catch(() => {});
+      player.load(fallback);
     }
   });
-
   await player.load(primary);
-  return videoTitle;
-}
-
-async function getVideoUrls(pageUrl) {
-  const uuid = pageUrl.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0];
-  if (!uuid) throw new Error();
-  if (pageUrl.includes('video-on-demand')) return { primary: `https://cf1318f5d.lwcdn.com/hls/${uuid}/playlist.m3u8`, fallback: null };
-  if (pageUrl.includes('live-sport')) {
-    const config = await fetchConfig(uuid);
-    const primary = config || `https://cf-live1318f5d.lwcdn.com/live/${uuid}/playlist.m3u8`;
-    return { primary, fallback: `https://cf1318f5d.lwcdn.com/hls/${uuid}/playlist.m3u8` };
-  }
-  throw new Error();
-}
-
-async function fetchConfig(uuid) {
-  const r = await fetch(PROXY + encodeURIComponent(`https://play.lwcdn.com/web/public/native/config/7e165983-ccb1-453f-bc68-0d8ee7199e66/${uuid}`));
-  if (!r.ok) return null;
-  const d = await r.json();
-  const src = d.src?.[0];
-  return src?.startsWith('//') ? 'https:' + src : src;
+  return title;
 }
 
 async function loadFullArticle(originalUrl, container) {
   const pageResp = await fetch(PROXY + encodeURIComponent(originalUrl));
   const pageHtml = await pageResp.text();
   const pageDoc = new DOMParser().parseFromString(pageHtml, "text/html");
-
-  const asyncEl = pageDoc.querySelector('article[data-load-async-url*="/jfm-load-article-content/"], div[data-load-async-url*="/jfm-load-article-content/"]');
+  const asyncEl = pageDoc.querySelector('[data-load-async-url*="/jfm-load-article-content/"]');
   if (!asyncEl) throw new Error();
-
   const asyncPath = asyncEl.getAttribute('data-load-async-url');
   const base = new URL(originalUrl);
   const asyncUrl = `${base.protocol}//${base.hostname}${asyncPath}`;
-
   const asyncResp = await fetch(PROXY + encodeURIComponent(asyncUrl));
-  if (!asyncResp.ok) throw new Error();
   const asyncHtml = await asyncResp.text();
   const doc = new DOMParser().parseFromString(asyncHtml, "text/html");
-
   const headline = doc.querySelector('h1.article__headline')?.textContent.trim();
+
+  console.log("ARTIKEL-OVERSKRIFT FUNDET:", headline || "(ingen fundet)");
+
   if (!headline) throw new Error();
 
   const label = doc.querySelector('span.label')?.textContent.trim() || '';
@@ -198,10 +179,32 @@ async function loadFullArticle(originalUrl, container) {
   return headline;
 }
 
+async function getVideoUrls(pageUrl) {
+  const uuid = pageUrl.match(/[0-9a-f-]{36}/i)?.[0];
+  if (!uuid) throw new Error();
+  if (pageUrl.includes('video-on-demand')) return { primary: `https://cf1318f5d.lwcdn.com/hls/${uuid}/playlist.m3u8`, fallback: null };
+  if (pageUrl.includes('live-sport')) {
+    const config = await fetchConfig(uuid);
+    const primary = config || `https://cf-live1318f5d.lwcdn.com/live/${uuid}/playlist.m3u8`;
+    return { primary, fallback: `https://cf1318f5d.lwcdn.com/hls/${uuid}/playlist.m3u8` };
+  }
+  throw new Error();
+}
+
+async function fetchConfig(uuid) {
+  const r = await fetch(PROXY + encodeURIComponent(`https://play.lwcdn.com/web/public/native/config/7e165983-ccb1-453f-bc68-0d8ee7199e66/${uuid}`));
+  if (!r.ok) return null;
+  const d = await r.json();
+  const src = d.src?.[0];
+  return src?.startsWith('//') ? 'https:' + src : src;
+}
+
 setCopyButtonEnabled(false);
 
 const urlFromParam = getUrlParameter();
 if (urlFromParam) {
   urlInput.value = urlFromParam;
   processUrl(urlFromParam);
+} else {
+  updatePageTitle("JFM AiO");
 }
