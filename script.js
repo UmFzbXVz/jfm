@@ -187,16 +187,20 @@ async function loadFullArticle(url, container) {
   if (!asyncResp.ok) throw new Error();
   const asyncHtml = await asyncResp.text();
   const asyncDoc = new DOMParser().parseFromString(asyncHtml, "text/html");
+
   const headline = asyncDoc.querySelector('h1.article__headline')?.textContent.trim();
   if (!headline) throw new Error();
+
   const label = asyncDoc.querySelector('span.label')?.textContent.trim() || '';
   const lead = asyncDoc.querySelector('div.article__lead')?.textContent.trim() || '';
   const byline = asyncDoc.querySelector('div.article__byline')?.textContent.trim() || '';
   const dateStr = asyncDoc.querySelector('time.article__date')?.getAttribute('datetime');
   const date = dateStr ? new Date(dateStr.replace('Z', '+00:00')).toLocaleDateString('da-DK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '';
+
   const paragraphs = Array.from(asyncDoc.querySelectorAll('div.article__text p'))
     .map(p => p.textContent.trim())
     .filter(t => t.length > 10);
+
   const images = Array.from(asyncDoc.querySelectorAll('figure.article__figure'))
     .map(fig => {
       const wrapper = fig.querySelector('div.image__wrapper');
@@ -205,23 +209,29 @@ async function loadFullArticle(url, container) {
       return src ? { src, caption } : null;
     })
     .filter(Boolean);
+
   let out = '';
   if (label) out += `<div class="article-label">${label}</div>`;
   out += `<h1 class="article-headline">${headline}</h1>`;
   if (lead) out += `<p class="article-lead">${lead}</p>`;
   if (byline || date) out += `<div class="article-meta">${byline}${byline && date ? ' – ' : ''}${date}</div>`;
+
   paragraphs.forEach(p => out += `<p class="article-text">${p}</p>`);
+
   images.forEach(img => {
-    out += `<img.src}" class="article-image" alt="${img.caption}">`;
-    if (img.caption) out += `<figcaption>${img.caption}</figcaption>`;
+    out += `<figure class="article-figure">
+              <img src="${img.src}" class="article-image" alt="${img.caption}">
+              ${img.caption ? `<figcaption>${img.caption}</figcaption>` : ''}
+            </figure>`;
   });
+
   container.innerHTML = out;
   return headline;
 }
 
 setCopyButtonEnabled(false);
 
-document.querySelector('h1, .logo, [href="#"], header').addEventListener('click', e => {
+document.querySelector('h1, .logo, [href="#"], header')?.addEventListener('click', e => {
   if (e.target.textContent.trim() === 'JFM AiO') {
     e.preventDefault();
     window.location.href = 'https://umfzbxvz.github.io/jfm/';
