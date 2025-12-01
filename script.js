@@ -2,7 +2,6 @@ const PROXY = "https://corsproxy.io/?";
 const urlInput = document.getElementById('urlInput');
 const output = document.getElementById('output');
 const copyShareBtn = document.getElementById('copyShareBtn');
-
 let currentUrl = "";
 
 function updatePageTitle(title) {
@@ -26,17 +25,13 @@ function normalizeUrl(input) {
 
 urlInput.addEventListener('input', () => {
   const val = urlInput.value.trim();
-  if (val !== currentUrl) {
-    setCopyButtonEnabled(false);
-  }
+  if (val !== currentUrl) setCopyButtonEnabled(false);
 });
 
 urlInput.addEventListener('paste', () => {
   setTimeout(() => {
     const val = urlInput.value.trim();
-    if (isJfmLink(val) && val !== currentUrl) {
-      processUrl(val);
-    }
+    if (isJfmLink(val) && val !== currentUrl) processUrl(val);
   }, 50);
 });
 
@@ -61,12 +56,15 @@ document.getElementById('infoModal').onclick = e => {
 
 copyShareBtn.addEventListener('click', async () => {
   if (!currentUrl) return;
-
-  let clean = currentUrl.replace(/^https?:\/\//i, '');
-  if (clean.includes('?teaser-referral=')) clean = clean.split('?')[0];
-
+  let clean = currentUrl;
+  try {
+    const url = new URL(currentUrl);
+    clean = url.origin + url.pathname;
+  } catch (e) {
+    clean = currentUrl.split('?')[0];
+  }
+  clean = clean.replace(/^https?:\/\//i, '');
   const shareUrl = `https://umfzbxvz.github.io/jfm?url=${clean}`;
-
   try {
     await navigator.clipboard.writeText(shareUrl);
   } catch {
@@ -103,14 +101,11 @@ function getUrlParameter() {
 
 async function processUrl(inputUrl) {
   const cleanUrl = normalizeUrl(inputUrl);
-
   output.innerHTML = '<p style="text-align:center;color:#aaa;padding:2rem">Indlæser…</p>';
   disableInput();
   updatePageTitle("Indlæser...");
-
   let success = false;
   let title = null;
-
   try {
     if (cleanUrl.includes('jfmplay.dk')) {
       title = await loadVideo(cleanUrl, output);
@@ -120,7 +115,6 @@ async function processUrl(inputUrl) {
       success = true;
     }
   } catch {}
-
   if (success && title) {
     updatePageTitle(title);
     currentUrl = cleanUrl;
@@ -133,7 +127,6 @@ async function processUrl(inputUrl) {
       currentUrl = "";
     }
   }
-
   enableInput();
 }
 
@@ -196,7 +189,6 @@ async function loadFullArticle(url, container) {
   const asyncDoc = new DOMParser().parseFromString(asyncHtml, "text/html");
   const headline = asyncDoc.querySelector('h1.article__headline')?.textContent.trim();
   if (!headline) throw new Error();
-
   const label = asyncDoc.querySelector('span.label')?.textContent.trim() || '';
   const lead = asyncDoc.querySelector('div.article__lead')?.textContent.trim() || '';
   const byline = asyncDoc.querySelector('div.article__byline')?.textContent.trim() || '';
@@ -213,7 +205,6 @@ async function loadFullArticle(url, container) {
       return src ? { src, caption } : null;
     })
     .filter(Boolean);
-
   let out = '';
   if (label) out += `<div class="article-label">${label}</div>`;
   out += `<h1 class="article-headline">${headline}</h1>`;
@@ -221,10 +212,9 @@ async function loadFullArticle(url, container) {
   if (byline || date) out += `<div class="article-meta">${byline}${byline && date ? ' – ' : ''}${date}</div>`;
   paragraphs.forEach(p => out += `<p class="article-text">${p}</p>`);
   images.forEach(img => {
-    out += `<img src="${img.src}" class="article-image" alt="${img.caption}">`;
+    out += `<img.src}" class="article-image" alt="${img.caption}">`;
     if (img.caption) out += `<figcaption>${img.caption}</figcaption>`;
   });
-
   container.innerHTML = out;
   return headline;
 }
