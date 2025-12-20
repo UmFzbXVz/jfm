@@ -234,7 +234,32 @@ async function loadFullArticle(url, container) {
     })
     .filter(Boolean);
 
+  const videoScripts = Array.from(asyncDoc.querySelectorAll('script[type="text/javascript"]'))
+    .filter(script => script.textContent.includes('_bp.push') && script.textContent.includes('"video"'));
+
+  const videos = videoScripts.map(script => {
+    try {
+      const match = script.textContent.match(/obj:\s*\{[^}]*"video":\s*"([^"]+)"[^}]*"id":\s*"([^"]+)"[^}]*\}/);
+      if (match) {
+        return { videoId: match[1], partnerId: match[2] };
+      }
+      const videoMatch = script.textContent.match(/"video":\s*"([^"]+)"/);
+      if (videoMatch) {
+        return { videoId: videoMatch[1], partnerId: '25547' };
+      }
+    } catch (e) {}
+    return null;
+  }).filter(Boolean);
+
+  const videoUrls = videos.map(v => {
+    const partner = v.partnerId || '25547';
+    return `https://cdn.videosyndicate.io/live/partners/${partner}/streaming/${v.videoId}/${v.videoId}_720p_.m3u8`;
+  });
+
   const cleanOriginalUrl = getCleanUrl(url);
+  const originalUrlObj = new URL(cleanOriginalUrl);
+  const baseDomain = originalUrlObj.hostname.replace(/^www\./, '');
+
 
   let out = '<div class="article-header">';
 
@@ -242,7 +267,14 @@ async function loadFullArticle(url, container) {
     out += `<div class="article-label">${label}</div>`;
   }
 
-  out += `<a href="${cleanOriginalUrl}" target="_blank" rel="noopener" class="original-article-link">Læs original artikel</a>`;
+  out += `
+  <a href="${cleanOriginalUrl}"
+     target="_blank"
+     rel="noopener"
+     class="original-article-link">
+     ${baseDomain} <span class="external-icon">↗</span>
+  </a>`;
+
 
   out += '</div>';
 
@@ -252,6 +284,14 @@ async function loadFullArticle(url, container) {
 
   paragraphs.forEach(p => out += `<p class="article-text">${p}</p>`);
 
+  videoUrls.forEach((m3u8, index) => {
+    out += `<div class="article-video-wrapper">
+              <video class="article-video" controls playsinline></video>
+              <p class="article-video-caption">Video fra artiklen</p>
+            </div>`;
+    out += `<script class="video-data" type="application/json" data-index="${index}">${m3u8}</script>`;
+  });
+
   images.forEach(img => {
     out += `<figure class="article-figure">
               <img src="${img.src}" class="article-image" alt="${img.caption}">
@@ -260,6 +300,25 @@ async function loadFullArticle(url, container) {
   });
 
   container.innerHTML = out;
+
+  const videoElements = container.querySelectorAll('video.article-video');
+  shaka.polyfill.installAll();
+  if (shaka.Player.isBrowserSupported()) {
+    videoElements.forEach(videoEl => {
+      const player = new shaka.Player(videoEl);
+      const wrapper = videoEl.closest('.article-video-wrapper');
+      const dataScript = wrapper ? wrapper.nextElementSibling : null;
+      if (dataScript && dataScript.classList.contains('video-data')) {
+        const m3u8Url = dataScript.textContent.trim();
+        player.load(m3u8Url).catch(err => {
+          console.error('Shaka load error:', err);
+          wrapper.innerHTML += '<p style="color:red;text-align:center">Video kunne ikke afspilles</p>';
+        });
+      }
+    });
+  } else {
+    container.innerHTML += '<p>Browser understøtter ikke videoafspilning</p>';
+  }
 
   const description = lead || (paragraphs[0] ? paragraphs[0].substring(0, 200) + '...' : '');
   const firstImage = images[0]?.src || '';
