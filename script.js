@@ -41,6 +41,17 @@ function normalizeUrl(input) {
   return t;
 }
 
+function getCleanUrl(urlStr) {
+  let clean = urlStr;
+  try {
+    const url = new URL(urlStr);
+    clean = url.origin + url.pathname;
+  } catch (e) {
+    clean = urlStr.split('?')[0];
+  }
+  return clean;
+}
+
 urlInput.addEventListener('input', () => {
   const val = urlInput.value.trim();
   if (val !== currentUrl) setCopyButtonEnabled(false);
@@ -74,14 +85,7 @@ document.getElementById('infoModal').onclick = e => {
 
 copyShareBtn.addEventListener('click', async () => {
   if (!currentUrl) return;
-  let clean = currentUrl;
-  try {
-    const url = new URL(currentUrl);
-    clean = url.origin + url.pathname;
-  } catch (e) {
-    clean = currentUrl.split('?')[0];
-  }
-  clean = clean.replace(/^https?:\/\//i, '');
+  const clean = getCleanUrl(currentUrl).replace(/^https?:\/\//i, '');
   const shareUrl = `https://jfmaio.netlify.app?url=${clean}`;
   try {
     await navigator.clipboard.writeText(shareUrl);
@@ -230,8 +234,18 @@ async function loadFullArticle(url, container) {
     })
     .filter(Boolean);
 
-  let out = '';
-  if (label) out += `<div class="article-label">${label}</div>`;
+  const cleanOriginalUrl = getCleanUrl(url);
+
+  let out = '<div class="article-header">';
+
+  if (label) {
+    out += `<div class="article-label">${label}</div>`;
+  }
+
+  out += `<a href="${cleanOriginalUrl}" target="_blank" rel="noopener" class="original-article-link">Læs original artikel</a>`;
+
+  out += '</div>';
+
   out += `<h1 class="article-headline">${headline}</h1>`;
   if (lead) out += `<p class="article-lead">${lead}</p>`;
   if (byline || date) out += `<div class="article-meta">${byline}${byline && date ? ' – ' : ''}${date}</div>`;
