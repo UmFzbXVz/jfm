@@ -8,6 +8,24 @@ function updatePageTitle(title) {
   document.title = title || "JFM AiO";
 }
 
+function updateSocialMetadata(title, description, image, originalUrl) {
+  document.getElementById('og-title').setAttribute('content', title);
+  document.getElementById('og-description').setAttribute('content', description);
+  document.getElementById('twitter-title').setAttribute('content', title);
+  document.getElementById('twitter-description').setAttribute('content', description);
+
+  if (image) {
+    document.getElementById('og-image').setAttribute('content', image);
+    document.getElementById('twitter-image').setAttribute('content', image);
+  } else {
+    document.getElementById('og-image').setAttribute('content', '');
+    document.getElementById('twitter-image').setAttribute('content', '');
+  }
+
+  const fullOriginalUrl = originalUrl ? 'https://' + originalUrl.replace(/^https?:\/\//, '') : window.location.href;
+  document.getElementById('og-url').setAttribute('content', fullOriginalUrl);
+}
+
 function isJfmLink(str) {
   if (!str) return false;
   const t = str.trim();
@@ -125,6 +143,7 @@ async function processUrl(inputUrl) {
       output.innerHTML = '<p style="color:#f66;text-align:center;padding:2rem">Kunne ikke hente indholdet – tjek linket</p>';
       updatePageTitle("JFM AiO");
       currentUrl = "";
+      updateSocialMetadata("JFM AiO", "Forbedret visning af artikler og videoer fra JFM", "", "");
     }
   }
   enableInput();
@@ -151,6 +170,7 @@ async function loadVideo(pageUrl, container) {
     });
     await player.load(primary);
   }
+  updateSocialMetadata(title, "Video fra JFM Play", "", pageUrl);
   return title;
 }
 
@@ -226,6 +246,12 @@ async function loadFullArticle(url, container) {
   });
 
   container.innerHTML = out;
+
+  const description = lead || (paragraphs[0] ? paragraphs[0].substring(0, 200) + '...' : '');
+  const firstImage = images[0]?.src || '';
+
+  updateSocialMetadata(headline, description, firstImage, url);
+
   return headline;
 }
 
@@ -244,4 +270,5 @@ if (urlFromParam && isJfmLink(urlFromParam)) {
   processUrl(urlFromParam);
 } else {
   updatePageTitle("JFM AiO");
+  updateSocialMetadata("JFM AiO", "Forbedret visning af artikler og videoer fra JFM", "", "");
 }
