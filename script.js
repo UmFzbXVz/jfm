@@ -82,7 +82,7 @@ copyShareBtn.addEventListener('click', async () => {
     clean = currentUrl.split('?')[0];
   }
   clean = clean.replace(/^https?:\/\//i, '');
-  const shareUrl = `https://jfmaio.netlify.app/?url=${clean}`;
+  const shareUrl = `https://jfmaio.netlify.app?url=${clean}`;
   try {
     await navigator.clipboard.writeText(shareUrl);
   } catch {
@@ -260,7 +260,7 @@ setCopyButtonEnabled(false);
 document.querySelector('h1, .logo, [href="#"], header')?.addEventListener('click', e => {
   if (e.target.textContent.trim() === 'JFM AiO') {
     e.preventDefault();
-    window.location.href = 'https://jfmaio.netlify.app;
+    window.location.href = 'https://jfmaio.netlify.app';
   }
 });
 
