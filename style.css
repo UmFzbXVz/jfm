@@ -48,6 +48,14 @@ input:disabled{opacity:0.6;cursor:not-allowed;background:rgba(255,255,255,.05)}
 .live-badge {  background: red;  color: white;}
 .vod-badge {  background: #0066cc;  color: white;}
 .stream-video {  border-radius: 16px;   box-shadow: 0 8px 25px rgba(0,0,0,.5);}
+.ended-badge {  background: #666;  color: white;}
+.upcoming-badge {  background: #ff9800;  color: white;}
+.ended-stream-message {  text-align: center;  padding: 3rem 1.5rem;  background: rgba(255, 255, 255, .05);  border-radius: 16px;  margin: 2rem 0;  color: #ccc;  font-size: 1.2rem;  line-height: 1.6;  border: 1px solid rgba(255, 255, 255, .1);}
+.upcoming-stream-message {  text-align: center;  padding: 3rem 1.5rem;  background: rgba(255, 255, 255, .05);  border-radius: 16px;  margin: 2rem 0;  color: #ccc;  font-size: 1.2rem;  line-height: 1.6;  border: 1px solid rgba(255, 255, 255, .1);}
+.upcoming-stream-message p {  margin: 0.8rem 0;}
+.upcoming-stream-message .countdown {  font-size: 2rem;  font-weight: bold;  color: #ff9800;  margin: 1.5rem 0;  min-height: 2.4rem;}
+.article-video-wrapper {  margin: 2rem 0;  border-radius: 16px;  overflow: hidden;  box-shadow: 0 8px 25px rgba(0, 0, 0, .5);  background: #000;}
+.stream-video {  width: 100%;  height: auto;  display: block;}
 @media (max-width:600px){
   .article-header{flex-direction:row;justify-content:space-between;align-items:center;width:100%}
   .article-label{flex-shrink:0}
@@ -57,3 +65,8 @@ input:disabled{opacity:0.6;cursor:not-allowed;background:rgba(255,255,255,.05)}
   .modal-content{margin:0 10px;padding:28px 24px 24px;max-height:92vh;border-radius:18px}
   .close-modal{top:10px;right:14px}
 }
+@media (max-width: 600px) {
+  .upcoming-stream-message .countdown {    font-size: 1.6rem;  }
+    .ended-stream-message,  .upcoming-stream-message {    padding: 2rem 1rem;    font-size: 1.1rem;  }
+}
+

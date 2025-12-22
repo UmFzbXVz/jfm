@@ -3,9 +3,13 @@ const urlInput = document.getElementById('urlInput');
 const output = document.getElementById('output');
 const copyShareBtn = document.getElementById('copyShareBtn');
 let currentUrl = "";
+let countdownInterval = null;
+let reloadInterval = null;
+
 function updatePageTitle(title) {
   document.title = title || "JFM AiO";
 }
+
 function updateSocialMetadata(title, description, image, originalUrl) {
   document.getElementById('og-title').setAttribute('content', title);
   document.getElementById('og-description').setAttribute('content', description);
@@ -21,11 +25,13 @@ function updateSocialMetadata(title, description, image, originalUrl) {
   const fullOriginalUrl = originalUrl ? 'https://' + originalUrl.replace(/^https?:\/\//, '') : window.location.href;
   document.getElementById('og-url').setAttribute('content', fullOriginalUrl);
 }
+
 function isJfmLink(str) {
   if (!str) return false;
   const t = str.trim();
   return (/^https?:\/\//i.test(t) || /jfmplay\.dk|stiften\.dk|jv\.dk|fyens\.dk|ugeavisen\.dk|hsfo\.dk|faa\.dk|erhvervplus\.dk|dagbladet-holstebro-struer\.dk|viborg-folkeblad\.dk|amtsavisen\.dk|vafo\.dk|helsingordagblad\.dk|frdb\.dk/i.test(t));
 }
+
 function normalizeUrl(input) {
   let t = input.trim();
   if (/^https?:\/\//i.test(t)) return t;
@@ -34,6 +40,7 @@ function normalizeUrl(input) {
   if (domainMatch) return `https://${t}`;
   return t;
 }
+
 function getCleanUrl(urlStr) {
   let clean = urlStr;
   try {
@@ -44,16 +51,19 @@ function getCleanUrl(urlStr) {
   }
   return clean;
 }
+
 urlInput.addEventListener('input', () => {
   const val = urlInput.value.trim();
   if (val !== currentUrl) setCopyButtonEnabled(false);
 });
+
 urlInput.addEventListener('paste', () => {
   setTimeout(() => {
     const val = urlInput.value.trim();
     if (isJfmLink(val) && val !== currentUrl) processUrl(val);
   }, 50);
 });
+
 urlInput.addEventListener('keypress', e => {
   if (e.key === 'Enter') {
     const val = urlInput.value.trim();
@@ -63,13 +73,16 @@ urlInput.addEventListener('keypress', e => {
     }
   }
 });
+
 urlInput.addEventListener('focus', () => urlInput.select());
 urlInput.addEventListener('click', () => urlInput.select());
+
 document.getElementById('infoBtn').onclick = () => document.getElementById('infoModal').classList.add('show');
 document.querySelector('.close-modal').onclick = () => document.getElementById('infoModal').classList.remove('show');
 document.getElementById('infoModal').onclick = e => {
   if (e.target === document.getElementById('infoModal')) document.getElementById('infoModal').classList.remove('show');
 };
+
 copyShareBtn.addEventListener('click', async () => {
   if (!currentUrl) return;
   const clean = getCleanUrl(currentUrl).replace(/^https?:\/\//i, '');
@@ -87,23 +100,36 @@ copyShareBtn.addEventListener('click', async () => {
   copyShareBtn.classList.add('copied');
   setTimeout(() => copyShareBtn.classList.remove('copied'), 2000);
 });
+
 function setCopyButtonEnabled(enabled) {
   copyShareBtn.disabled = !enabled;
   if (!enabled) copyShareBtn.classList.remove('copied');
 }
+
 function disableInput() {
   urlInput.disabled = true;
 }
+
 function enableInput() {
   urlInput.disabled = false;
   urlInput.focus();
   urlInput.select();
 }
+
 function getUrlParameter() {
   const params = new URLSearchParams(location.search);
   return params.get('link') || params.get('url') || '';
 }
+
+function clearIntervals() {
+  if (countdownInterval) clearInterval(countdownInterval);
+  if (reloadInterval) clearInterval(reloadInterval);
+  countdownInterval = null;
+  reloadInterval = null;
+}
+
 async function processUrl(inputUrl) {
+  clearIntervals();
   const cleanUrl = normalizeUrl(inputUrl);
   output.innerHTML = '<p style="text-align:center;color:#aaa;padding:2rem">Indlæser…</p>';
   disableInput();
@@ -134,84 +160,156 @@ async function processUrl(inputUrl) {
   }
   enableInput();
 }
+
 async function loadVideo(pageUrl, container) {
   const uuidMatch = pageUrl.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
   if (!uuidMatch) {
-    container.innerHTML = '<p style="color:#f66;text-align:center">Ugyldigt JFM Play link</p>';
+    container.innerHTML = '<p style="color:#f66;text-align:center;padding:2rem">Ugyldigt JFM Play link – kunne ikke finde video-ID</p>';
     return "JFM Play";
   }
   const uuid = uuidMatch[0];
-  const isLive = pageUrl.includes('live-sport') && !pageUrl.includes('video-on-demand');
-  const badgeText = isLive ? 'LIVE' : 'HØJDEPUNKTER';
-  const badgeClass = isLive ? 'live-badge' : 'vod-badge';
 
-  let title = "JFM Play stream";
+  let data = null;
+  let isLivestream = false;
+  let title = "JFM Play video";
+  let posterUrl = null;
+  let streamUrl = null;
 
-  if (!isLive) {
+  try {
+    const apiUrl = `https://jfmplay.dk/flowplayer/api/livestreams/${uuid}?workspaceId=8de32d80-db7d-47d2-867d-cd1e640f2745`;
+    const resp = await fetch(PROXY + encodeURIComponent(apiUrl));
+    if (resp.ok) {
+      data = await resp.json();
+      isLivestream = true;
+      title = data.headline || title;
+      posterUrl = data.imageUrl || null;
+    }
+  } catch (e) {}
+
+  if (!data) {
     try {
       const apiUrl = `https://jfmplay.dk/flowplayer/api/videos-on-demand/${uuid}?workspaceId=8de32d80-db7d-47d2-867d-cd1e640f2745`;
-      const apiResp = await fetch(PROXY + encodeURIComponent(apiUrl));
-      if (apiResp.ok) {
-        const data = await apiResp.json();
+      const resp = await fetch(PROXY + encodeURIComponent(apiUrl));
+      if (resp.ok) {
+        data = await resp.json();
         title = data.headline || title;
-        if (data.imageUrl) {
-          posterUrl = data.imageUrl;
-        }
+        posterUrl = data.imageUrl || null;
       }
     } catch (e) {}
-  } else {
-    title = "Live: JFM Play";
   }
 
-  const primaryUrl = `https://cf1318f5d.lwcdn.com/hls/${uuid}/playlist.m3u8`;
+  if (!data) {
+    container.innerHTML = '<p style="color:#f66;text-align:center;padding:2rem">Kunne ikke hente information om videoen – tjek linket</p>';
+    return title;
+  }
+
+  let badgeText, badgeClass;
+
+  if (isLivestream) {
+    const state = data.state;
+    badgeClass = state === 'live' ? 'live-badge' : state === 'upcoming' ? 'upcoming-badge' : 'ended-badge';
+    badgeText = state === 'live' ? 'LIVE' : state === 'upcoming' ? 'KOMMENDE' : 'AFSLUTTET';
+    streamUrl = `https://cf-live1318f5d.lwcdn.com/live/${uuid}/playlist.m3u8`;
+  } else {
+    badgeText = 'VOD';
+    badgeClass = 'vod-badge';
+    streamUrl = `https://cf1318f5d.lwcdn.com/hls/${uuid}/playlist.m3u8`;
+  }
+
   const posterAttr = posterUrl ? `poster="${posterUrl}"` : '';
 
-  let out = `<div class="article-header">
+  const header = `<div class="article-header">
     <span class="${badgeClass} article-label">${badgeText}</span>
     <a href="${pageUrl}" target="_blank" rel="noopener" class="original-article-link">
       jfmplay.dk <span class="external-icon">↗</span>
     </a>
-  </div>`;
+  </div>
+  <h3 class="stream-headline">${title}</h3>`;
 
-  out += `<h3 class="stream-headline">${title}</h3>`;
+  if (isLivestream && data.state === 'ended') {
+    container.innerHTML = header + `
+      <div class="ended-stream-message">
+        <p>Denne livesending er afsluttet</p>
+        <p>Du kan muligvis finde optagelsen som video-on-demand på JFM Play</p>
+      </div>`;
+    return title;
+  }
 
-  out += `<div class="article-video-wrapper">
+  if (isLivestream && data.state === 'upcoming') {
+    const startTime = (data.broadcastStart || data.publishedDate) * 1000;
+    container.innerHTML = header + `
+      <div class="upcoming-stream-message">
+        <p>Livesendingen starter om</p>
+        <p class="countdown">Beregner...</p>
+        <p>siden opdateres automatisk når streamen går i gang</p>
+      </div>`;
+
+    const countdownEl = container.querySelector('.countdown');
+
+    function updateCountdown() {
+      const now = Date.now();
+      const diff = startTime - now;
+      if (diff <= 0) {
+        countdownEl.textContent = "Streamen skulle være startet nu – opdaterer...";
+        clearInterval(countdownInterval);
+        tryReloadStream();
+        return;
+      }
+      const days = Math.floor(diff / 86400000);
+      const hours = Math.floor((diff % 86400000) / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      let text = "";
+      if (days > 0) text += `${days} dage `;
+      if (hours > 0 || days > 0) text += `${hours} timer `;
+      if (minutes > 0 || hours > 0 || days > 0) text += `${minutes} minutter `;
+      text += `${seconds} sekunder`;
+      countdownEl.textContent = text;
+    }
+
+    updateCountdown();
+    countdownInterval = setInterval(updateCountdown, 1000);
+
+    async function tryReloadStream() {
+      reloadInterval = setInterval(async () => {
+        try {
+          const resp = await fetch(PROXY + encodeURIComponent(`https://jfmplay.dk/flowplayer/api/livestreams/${uuid}?workspaceId=8de32d80-db7d-47d2-867d-cd1e640f2745`));
+          if (resp.ok) {
+            const newData = await resp.json();
+            if (newData.state === 'live') {
+              clearIntervals();
+              container.innerHTML = '<p style="text-align:center;color:#aaa">Starter live stream...</p>';
+              setTimeout(() => loadVideo(pageUrl, container), 1000);
+            }
+          }
+        } catch (e) {}
+      }, 10000);
+    }
+
+    return title;
+  }
+
+  let out = header + `<div class="article-video-wrapper">
     <video class="article-video stream-video" controls autoplay playsinline ${posterAttr}></video>
   </div>`;
 
   container.innerHTML = out;
 
   const video = container.querySelector('.stream-video');
+
   shaka.polyfill.installAll();
   if (shaka.Player.isBrowserSupported()) {
     const player = new shaka.Player(video);
-    player.load(primaryUrl).catch(err => {
-      container.innerHTML += '<p style="color:red;text-align:center;margin-top:1rem">Video kunne ikke afspilles</p>';
+    player.load(streamUrl).catch(err => {
+      container.innerHTML += '<p style="color:#f66;text-align:center;margin-top:1rem">Videoen kunne ikke afspilles (teknisk fejl)</p>';
     });
   } else {
-    container.innerHTML += '<p style="color:red;text-align:center;margin-top:1rem">Browser understøtter ikke afspilning</p>';
+    container.innerHTML += '<p style="color:#f66;text-align:center;margin-top:1rem">Din browser understøtter ikke videoafspilning</p>';
   }
 
   return title;
 }
-async function getVideoUrls(pageUrl) {
-  const uuid = pageUrl.match(/[0-9a-f-]{36}/i)?.[0];
-  if (!uuid) throw new Error();
-  if (pageUrl.includes('video-on-demand')) return { primary: `https://cf1318f5d.lwcdn.com/hls/${uuid}/playlist.m3u8`, fallback: null };
-  if (pageUrl.includes('live-sport')) {
-    const config = await fetchConfig(uuid);
-    const primary = config || `https://cf-live1318f5d.lwcdn.com/live/${uuid}/playlist.m3u8`;
-    return { primary, fallback: `https://cf1318f5d.lwcdn.com/hls/${uuid}/playlist.m3u8` };
-  }
-  throw new Error();
-}
-async function fetchConfig(uuid) {
-  const r = await fetch(PROXY + encodeURIComponent(`https://play.lwcdn.com/web/public/native/config/7e165983-ccb1-453f-bc68-0d8ee7199e66/${uuid}`));
-  if (!r.ok) return null;
-  const d = await r.json();
-  const src = d.src?.[0];
-  return src?.startsWith('//') ? 'https:' + src : src;
-}
+
 async function loadFullArticle(url, container) {
   const resp = await fetch(PROXY + encodeURIComponent(url));
   const html = await resp.text();
@@ -369,13 +467,16 @@ async function loadFullArticle(url, container) {
   updateSocialMetadata(headline, description, firstImage, url);
   return headline;
 }
+
 setCopyButtonEnabled(false);
+
 document.querySelector('h1, .logo, [href="#"], header')?.addEventListener('click', e => {
   if (e.target.textContent.trim() === 'JFM AiO') {
     e.preventDefault();
     window.location.href = 'https://jfmaio.netlify.app';
   }
 });
+
 const urlFromParam = getUrlParameter();
 if (urlFromParam && isJfmLink(urlFromParam)) {
   urlInput.value = urlFromParam;
