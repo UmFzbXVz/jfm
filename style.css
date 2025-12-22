@@ -25,6 +25,7 @@ input:disabled{opacity:0.6;cursor:not-allowed;background:rgba(255,255,255,.05)}
 #output video{width:100%;display:block;background:#000;border-radius:16px}
 .article-label{display:inline-flex;align-items:center;justify-content:center;background:white;color:#000;padding:6px 14px;border-radius:8px;font-weight:bold;font-size:.9rem;height:32px;min-width:50px;box-sizing:border-box}
 .article-headline{font-size:clamp(1.8rem,5vw,2.8rem);margin:0 0 1rem;color:#fff;line-height:1.2;font-weight:700}
+.stream-headline{font-size:clamp(1.2rem,3vw,2rem);margin:0 0 1rem;color:#fff;line-height:1.2;font-weight:700}
 .article-lead{font-size:1.35rem;color:#ddd;margin:0 0 2rem;line-height:1.6}
 .article-meta{color:#aaa;font-size:1rem;margin:0 0 2rem}
 .article-text p{margin:1.6rem 0;font-size:1.2rem;line-height:1.8;color:#eee}
@@ -44,6 +45,9 @@ input:disabled{opacity:0.6;cursor:not-allowed;background:rgba(255,255,255,.05)}
 .article-video-wrapper {  margin: 2rem 0;  text-align: center;}
 .article-video {  width: 100%;  max-width: 800px;  background: #000;  aspect-ratio: 16/9;}
 .article-video-caption {  font-style: italic;  color: #666;  margin-top: 0.5rem;}
+.live-badge {  background: red;  color: white;}
+.vod-badge {  background: #0066cc;  color: white;}
+.stream-video {  border-radius: 16px;   box-shadow: 0 8px 25px rgba(0,0,0,.5);}
 @media (max-width:600px){
   .article-header{flex-direction:row;justify-content:space-between;align-items:center;width:100%}
   .article-label{flex-shrink:0}
