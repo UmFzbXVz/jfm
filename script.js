@@ -155,7 +155,6 @@ async function processUrl(inputUrl) {
       output.innerHTML = '<p style="color:#f66;text-align:center;padding:2rem">Kunne ikke hente indholdet – tjek linket</p>';
       updatePageTitle("JFM AiO");
       currentUrl = "";
-      updateSocialMetadata("JFM AiO", "Forbedret visning af artikler og videoer fra JFM", "", "");
     }
   }
   enableInput();
@@ -168,13 +167,11 @@ async function loadVideo(pageUrl, container) {
     return "JFM Play";
   }
   const uuid = uuidMatch[0];
-
   let data = null;
   let isLivestream = false;
   let title = "JFM Play video";
   let posterUrl = null;
   let streamUrl = null;
-
   try {
     const apiUrl = `https://jfmplay.dk/flowplayer/api/livestreams/${uuid}?workspaceId=8de32d80-db7d-47d2-867d-cd1e640f2745`;
     const resp = await fetch(PROXY + encodeURIComponent(apiUrl));
@@ -185,7 +182,6 @@ async function loadVideo(pageUrl, container) {
       posterUrl = data.imageUrl || null;
     }
   } catch (e) {}
-
   if (!data) {
     try {
       const apiUrl = `https://jfmplay.dk/flowplayer/api/videos-on-demand/${uuid}?workspaceId=8de32d80-db7d-47d2-867d-cd1e640f2745`;
@@ -197,14 +193,11 @@ async function loadVideo(pageUrl, container) {
       }
     } catch (e) {}
   }
-
   if (!data) {
     container.innerHTML = '<p style="color:#f66;text-align:center;padding:2rem">Kunne ikke hente information om videoen – tjek linket</p>';
     return title;
   }
-
   let badgeText, badgeClass;
-
   if (isLivestream) {
     const state = data.state;
     badgeClass = state === 'live' ? 'live-badge' : state === 'upcoming' ? 'upcoming-badge' : 'ended-badge';
@@ -215,9 +208,7 @@ async function loadVideo(pageUrl, container) {
     badgeClass = 'vod-badge';
     streamUrl = `https://cf1318f5d.lwcdn.com/hls/${uuid}/playlist.m3u8`;
   }
-
   const posterAttr = posterUrl ? `poster="${posterUrl}"` : '';
-
   const header = `<div class="article-header">
     <span class="${badgeClass} article-label">${badgeText}</span>
     <a href="${pageUrl}" target="_blank" rel="noopener" class="original-article-link">
@@ -225,16 +216,15 @@ async function loadVideo(pageUrl, container) {
     </a>
   </div>
   <h3 class="stream-headline">${title}</h3>`;
-
   if (isLivestream && data.state === 'ended') {
     container.innerHTML = header + `
       <div class="ended-stream-message">
         <p>Denne livesending er afsluttet</p>
         <p>Du kan muligvis finde optagelsen som video-on-demand på JFM Play</p>
       </div>`;
+    window.prerenderReady = true;
     return title;
   }
-
   if (isLivestream && data.state === 'upcoming') {
     const startTime = (data.broadcastStart || data.publishedDate) * 1000;
     container.innerHTML = header + `
@@ -243,9 +233,7 @@ async function loadVideo(pageUrl, container) {
         <p class="countdown">Beregner...</p>
         <p>siden opdateres automatisk når streamen går i gang</p>
       </div>`;
-
     const countdownEl = container.querySelector('.countdown');
-
     function updateCountdown() {
       const now = Date.now();
       const diff = startTime - now;
@@ -266,10 +254,8 @@ async function loadVideo(pageUrl, container) {
       text += `${seconds} sekunder`;
       countdownEl.textContent = text;
     }
-
     updateCountdown();
     countdownInterval = setInterval(updateCountdown, 1000);
-
     async function tryReloadStream() {
       reloadInterval = setInterval(async () => {
         try {
@@ -285,18 +271,14 @@ async function loadVideo(pageUrl, container) {
         } catch (e) {}
       }, 10000);
     }
-
+    window.prerenderReady = true;
     return title;
   }
-
   let out = header + `<div class="article-video-wrapper">
     <video class="article-video stream-video" controls autoplay playsinline ${posterAttr}></video>
   </div>`;
-
   container.innerHTML = out;
-
   const video = container.querySelector('.stream-video');
-
   shaka.polyfill.installAll();
   if (shaka.Player.isBrowserSupported()) {
     const player = new shaka.Player(video);
@@ -306,7 +288,7 @@ async function loadVideo(pageUrl, container) {
   } else {
     container.innerHTML += '<p style="color:#f66;text-align:center;margin-top:1rem">Din browser understøtter ikke videoafspilning</p>';
   }
-
+  window.prerenderReady = true;
   return title;
 }
 
@@ -465,6 +447,7 @@ async function loadFullArticle(url, container) {
   const description = lead || (paragraphs[0] ? paragraphs[0].substring(0, 200) + '...' : '');
   const firstImage = images[0]?.src || '';
   updateSocialMetadata(headline, description, firstImage, url);
+  window.prerenderReady = true;
   return headline;
 }
 
@@ -484,4 +467,5 @@ if (urlFromParam && isJfmLink(urlFromParam)) {
 } else {
   updatePageTitle("JFM AiO");
   updateSocialMetadata("JFM AiO", "Forbedret visning af artikler og videoer fra JFM", "", "");
+  window.prerenderReady = true;
 }
